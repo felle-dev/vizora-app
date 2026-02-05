@@ -234,9 +234,8 @@ class UsageStatsWidget : AppWidgetProvider() {
             
             for (stat in stats) {
                 // Skip ignored packages and launcher
-                if (ignoredPackages.contains(stat.packageName) || 
-                    stat.packageName == launcherPackage) {
-                    continue
+                if (stat.packageName in ignoredPackages || stat.packageName == launcherPackage || stat.packageName == "com.example.vizora") {
+                        continue
                 }
                 
                 // CRITICAL: Only include apps with >3 minutes usage (matching main app filter)
