@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">Vizora</string>
+  <string name="accessibility_service_description"
+    >This service is used to monitor app usage and help you manage screen time. It can detect when apps are opened and track your usage patterns.</string
+  >
+  <string name="widget_description">View your daily screen time and most used apps</string>
+</resources>
