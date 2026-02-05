@@ -58,77 +58,123 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
     }
   }
 
-  void _showTimerDialog() {
+  void _showTimerBottomSheet() {
+    final theme = Theme.of(context);
     int selectedMinutes = widget.timerLimit ?? 30;
 
-    showDialog(
+    final appName =
+        _appInfo?['appName'] as String? ??
+        widget.stat.packageName.split('.').last;
+
+    showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Set App Timer'),
-          content: Column(
+        builder: (context, setSheetState) => Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Limit usage to ${selectedMinutes} minutes per day',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 16),
-              Slider(
-                value: selectedMinutes.toDouble(),
-                min: 5,
-                max: 300,
-                divisions: 59,
-                label: '$selectedMinutes min',
-                onChanged: (value) {
-                  setDialogState(() {
-                    selectedMinutes = value.toInt();
-                  });
-                },
-              ),
-              const SizedBox(height: 8),
-              if (_usageToday != null)
-                Text(
-                  'Used today: ${TimeTools.formatTime(_usageToday!)}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Set Timer for $appName',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Limit usage to $selectedMinutes minutes per day',
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    Slider(
+                      value: selectedMinutes.toDouble(),
+                      min: 5,
+                      max: 300,
+                      divisions: 59,
+                      label: '$selectedMinutes min',
+                      onChanged: (value) {
+                        setSheetState(() {
+                          selectedMinutes = value.toInt();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    if (_usageToday != null)
+                      Text(
+                        'Used today: ${TimeTools.formatTime(_usageToday!)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        if (widget.hasTimer)
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                widget.onTimerSet(null);
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Timer removed'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                              child: const Text('Remove'),
+                            ),
+                          ),
+                        if (widget.hasTimer) const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () {
+                              widget.onTimerSet(selectedMinutes);
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Timer set to $selectedMinutes minutes',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                            child: const Text('Set Timer'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
             ],
           ),
-          actions: [
-            if (widget.hasTimer)
-              TextButton(
-                onPressed: () {
-                  widget.onTimerSet(null);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Timer removed'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-                child: const Text('Remove'),
-              ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                widget.onTimerSet(selectedMinutes);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Timer set to $selectedMinutes minutes'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-              child: const Text('Set'),
-            ),
-          ],
         ),
       ),
     );
@@ -149,7 +195,7 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
                 title: Text(
-                  'Usage Details',
+                  '',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -164,7 +210,7 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
                   icon: Icon(
                     widget.hasTimer ? Icons.timer : Icons.timer_outlined,
                   ),
-                  onPressed: _showTimerDialog,
+                  onPressed: _showTimerBottomSheet,
                   tooltip: 'Set Timer',
                 ),
               ],
@@ -188,7 +234,7 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
                       theme.colorScheme.primaryContainer,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 0),
                   Expanded(
                     child: _buildStatCard(
                       'Sessions',
@@ -199,7 +245,7 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 0),
               _buildLineChart(),
               const SizedBox(height: 100),
             ],
@@ -255,7 +301,7 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
         height: 64,
         decoration: BoxDecoration(
           color: theme.colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(64),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(
           Icons.apps,
@@ -270,13 +316,13 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
       return Container(
         width: 64,
         height: 64,
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(64)),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(64),
+          borderRadius: BorderRadius.circular(16),
           child: Image.memory(
             Uint8List.fromList(iconBytes),
             fit: BoxFit.cover,
-            gaplessPlayback: true, // Add this
+            gaplessPlayback: true,
           ),
         ),
       );
@@ -287,7 +333,7 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
       height: 64,
       decoration: BoxDecoration(
         color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(64),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Icon(
         Icons.apps,
@@ -349,17 +395,10 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Hourly Usage',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
             SizedBox(
               height: 250,
               child: LineChart(
@@ -380,7 +419,7 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
-                        showTitles: true,
+                        showTitles: false,
                         reservedSize: 50,
                         interval: maxValue > 60 ? (maxValue / 5) : 15,
                         getTitlesWidget: (value, meta) {
@@ -445,23 +484,23 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
                       ),
                     ),
                   ],
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final hour = spot.x.toInt();
-                          final minutes = spot.y.toInt();
-                          return LineTooltipItem(
-                            '${TimeTools.formatHour(hour)}\n${minutes}m',
-                            TextStyle(
-                              color: theme.colorScheme.onInverseSurface,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          );
-                        }).toList();
-                      },
-                    ),
-                  ),
+                  // lineTouchData: LineTouchData(
+                  //   touchTooltipData: LineTouchTooltipData(
+                  //     getTooltipItems: (touchedSpots) {
+                  //       return touchedSpots.map((spot) {
+                  //         final hour = spot.x.toInt();
+                  //         final minutes = spot.y.toInt();
+                  //         return LineTooltipItem(
+                  //           '${TimeTools.formatHour(hour)}\n${minutes}m',
+                  //           TextStyle(
+                  //             color: theme.colorScheme.onInverseSurface,
+                  //             fontWeight: FontWeight.bold,
+                  //           ),
+                  //         );
+                  //       }).toList();
+                  //     },
+                  //   ),
+                  // ),
                   extraLinesData: ExtraLinesData(
                     horizontalLines: [
                       HorizontalLine(
