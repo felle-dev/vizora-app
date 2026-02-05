@@ -134,7 +134,7 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
               ),
             );
           },
-          onLongPress: () => _showIgnoreAppDialog(stat.packageName),
+          onLongPress: () => _showAppOptionsBottomSheet(stat),
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -293,18 +293,149 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
   }
 
   void _showAllPermissionsDialog() {
-    showDialog(
+    final theme = Theme.of(context);
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => _AllPermissionsDialog(
-        onAccept: () async {
-          Navigator.pop(context);
-          _isRequestingPermissions = true;
-          await _requestAllPermissions();
-        },
-        onReject: () {
-          Navigator.pop(context);
-        },
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      enableDrag: false,
+      isScrollControlled: true,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 32,
+                    height: 4,
+                    margin: const EdgeInsets.only(top: 12, bottom: 20),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurfaceVariant.withOpacity(
+                        0.4,
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.security,
+                            color: theme.colorScheme.primary,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Required Permissions',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'This app requires 4 permissions to function properly:',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildPermissionItem(
+                        context,
+                        Icons.bar_chart,
+                        'Usage Stats',
+                        'Track app usage',
+                      ),
+                      _buildPermissionItem(
+                        context,
+                        Icons.accessibility,
+                        'Accessibility',
+                        'Monitor app activity',
+                      ),
+                      _buildPermissionItem(
+                        context,
+                        Icons.layers,
+                        'Display Overlay',
+                        'Show blocking overlays',
+                      ),
+                      _buildPermissionItem(
+                        context,
+                        Icons.admin_panel_settings,
+                        'Device Admin',
+                        'Prevent uninstallation',
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer.withOpacity(
+                            0.3,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.lock,
+                              color: theme.colorScheme.primary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Text(
+                                'All data stays on your device',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Reject'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () async {
+                                Navigator.pop(context);
+                                _isRequestingPermissions = true;
+                                await _requestAllPermissions();
+                              },
+                              child: const Text('Grant All'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -347,7 +478,6 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
       });
     }
   }
-
 
   Future<void> _syncIgnoredPackages() async {
     await UsageStatsHelper.setIgnoredPackages(_ignoredPackages.toList());
@@ -498,109 +628,406 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
 
     if (!mounted) return;
 
-    showDialog(
+    final theme = Theme.of(context);
+
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Permissions Status'),
-        content: Column(
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildPermissionRow('Usage Stats', usageStats),
-            _buildPermissionRow('Accessibility', accessibility),
-            _buildPermissionRow('Display Overlay', overlay),
-            _buildPermissionRow('Device Admin', deviceAdmin),
+            Center(
+              child: Container(
+                width: 32,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Permissions Status',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildPermissionRow('Usage Stats', usageStats),
+                  _buildPermissionRow('Accessibility', accessibility),
+                  _buildPermissionRow('Display Overlay', overlay),
+                  _buildPermissionRow('Device Admin', deviceAdmin),
+                  const SizedBox(height: 24),
+                  if (!usageStats || !accessibility || !overlay || !deviceAdmin)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _isRequestingPermissions = true;
+                          _requestAllPermissions();
+                        },
+                        child: const Text('Grant All'),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          if (!usageStats || !accessibility || !overlay || !deviceAdmin)
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _isRequestingPermissions = true;
-                _requestAllPermissions();
-              },
-              child: const Text('Grant All'),
-            ),
-        ],
       ),
     );
   }
 
   void _showAboutDialog() {
     final theme = Theme.of(context);
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.coffee_outlined, color: theme.colorScheme.primary),
-            const SizedBox(width: 12),
-            const Text('About Vizora'),
-          ],
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.coffee_outlined,
+                          color: theme.colorScheme.primary,
+                          size: 32,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'About Vizora',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Vizora',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Version 1.0.0',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'A comprehensive screen time management app that helps you understand and control your digital habits.',
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer.withOpacity(
+                          0.3,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.lock_outline,
+                            size: 20,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'All data stays on your device',
+                              style: TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      '© 2026 Vizora\nLicensed under GPL v3.0',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPermissionHelpDialog() {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.help_outline,
+                      color: theme.colorScheme.primary,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Permission Help',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'How to enable permissions manually:',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildPermissionHelpItem(
+                        theme,
+                        Icons.bar_chart,
+                        'Usage Stats',
+                        'Settings → Apps → Special app access → Usage access → Vizora',
+                      ),
+                      const SizedBox(height: 12),
+                      _buildPermissionHelpItem(
+                        theme,
+                        Icons.accessibility,
+                        'Accessibility Service',
+                        'Settings → Accessibility → Downloaded apps → Vizora',
+                      ),
+                      const SizedBox(height: 12),
+                      _buildPermissionHelpItem(
+                        theme,
+                        Icons.layers,
+                        'Display Overlay',
+                        'Settings → Apps → Special app access → Display over other apps → Vizora',
+                      ),
+                      const SizedBox(height: 12),
+                      _buildPermissionHelpItem(
+                        theme,
+                        Icons.admin_panel_settings,
+                        'Device Admin',
+                        'Settings → Security → Device admin apps → Vizora',
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.errorContainer.withOpacity(
+                            0.3,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: theme.colorScheme.error.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.warning_amber_rounded,
+                                  size: 20,
+                                  color: theme.colorScheme.error,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Can\'t enable Accessibility?',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.error,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Some devices require removing restrictions first:\n\n'
+                              '1. Go to Settings → Apps → Vizora\n'
+                              '2. Tap the menu (⋮) in the top right\n'
+                              '3. Select "Allow restricted settings"\n'
+                              '4. Authenticate with PIN/biometric\n'
+                              '5. Now try enabling Accessibility again',
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.4,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondaryContainer
+                              .withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: theme.colorScheme.secondary.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 20,
+                              color: theme.colorScheme.secondary,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Note: Menu paths may vary slightly depending on your Android version and device manufacturer.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _isRequestingPermissions = true;
+                            _requestAllPermissions();
+                          },
+                          child: const Text('Try Again'),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPermissionHelpItem(
+    ThemeData theme,
+    IconData icon,
+    String title,
+    String path,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
+            Icon(icon, size: 18, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
             Text(
-              'Vizora',
-              style: theme.textTheme.headlineSmall?.copyWith(
+              title,
+              style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Version 1.0.0',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'A comprehensive screen time management app that helps you understand and control your digital habits.',
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.lock_outline,
-                    size: 20,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'All data stays on your device',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              '© 2026 Vizora\nLicensed under GPL v3.0',
-              style: TextStyle(fontSize: 12),
-            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+        const SizedBox(height: 6),
+        Padding(
+          padding: const EdgeInsets.only(left: 26),
+          child: Text(
+            path,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.4,
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -615,6 +1042,35 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
           ),
           const SizedBox(width: 12),
           Text(name),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPermissionItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String subtitle,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -862,6 +1318,22 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
                   foregroundColor: theme.colorScheme.errorContainer,
                 ),
                 child: const Text('Grant Missing Permissions'),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _showPermissionHelpDialog(),
+              icon: Icon(
+                Icons.help_outline,
+                size: 18,
+                color: theme.colorScheme.onErrorContainer,
+              ),
+              label: Text(
+                'Need Help?',
+                style: TextStyle(color: theme.colorScheme.onErrorContainer),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: theme.colorScheme.onErrorContainer),
+                minimumSize: const Size(double.infinity, 36),
               ),
             ),
           ],
@@ -1189,160 +1661,317 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
     );
   }
 
-  void _showIgnoreAppDialog(String packageName) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Ignore App'),
-        content: const Text(
-          'Add this app to ignored packages? It will no longer appear in usage stats or the widget.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              setState(() {
-                _ignoredPackages.add(packageName);
-              });
-              await _syncIgnoredPackages();
-              Navigator.pop(context);
-              await _loadUsageStats();
-
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('App added to ignored list'),
-                    behavior: SnackBarBehavior.floating,
-                    action: SnackBarAction(
-                      label: 'Undo',
-                      onPressed: () async {
-                        setState(() {
-                          _ignoredPackages.remove(packageName);
-                        });
-                        await _syncIgnoredPackages();
-                        await _loadUsageStats();
-                      },
-                    ),
-                  ),
-                );
-              }
-            },
-            child: const Text('Ignore'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AllPermissionsDialog extends StatelessWidget {
-  final VoidCallback onAccept;
-  final VoidCallback onReject;
-
-  const _AllPermissionsDialog({required this.onAccept, required this.onReject});
-
-  @override
-  Widget build(BuildContext context) {
+  void _showAppOptionsBottomSheet(AppUsageStat stat) {
     final theme = Theme.of(context);
+    final hasTimer = _appTimers.containsKey(stat.packageName);
+    final timerLimit = _appTimers[stat.packageName];
 
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(Icons.security, color: theme.colorScheme.primary),
-          const SizedBox(width: 12),
-          const Expanded(child: Text('Required Permissions')),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('This app requires 4 permissions to function properly:'),
-          const SizedBox(height: 16),
-          _buildPermissionItem(
-            context,
-            Icons.bar_chart,
-            'Usage Stats',
-            'Track app usage',
-          ),
-          _buildPermissionItem(
-            context,
-            Icons.accessibility,
-            'Accessibility',
-            'Monitor app activity',
-          ),
-          _buildPermissionItem(
-            context,
-            Icons.layers,
-            'Display Overlay',
-            'Show blocking overlays',
-          ),
-          _buildPermissionItem(
-            context,
-            Icons.admin_panel_settings,
-            'Device Admin',
-            'Prevent uninstallation',
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: theme.colorScheme.primary.withOpacity(0.3),
+    // Get cached app info
+    final appInfo = _appInfoCache[stat.packageName];
+    final appName =
+        appInfo?['appName'] as String? ?? stat.packageName.split('.').last;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 32,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.lock, color: theme.colorScheme.primary, size: 20),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'All data stays on your device',
-                    style: TextStyle(fontSize: 12),
-                  ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Text(
+                appName,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            ListTile(
+              leading: Icon(
+                hasTimer ? Icons.timer : Icons.timer_outlined,
+                color: theme.colorScheme.primary,
+              ),
+              title: Text(hasTimer ? 'Edit Timer' : 'Set Timer'),
+              subtitle: hasTimer
+                  ? Text('Current limit: $timerLimit minutes')
+                  : null,
+              onTap: () {
+                Navigator.pop(context);
+                _showTimerBottomSheet(stat);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.block, color: theme.colorScheme.error),
+              title: const Text('Ignore App'),
+              subtitle: const Text('Hide from usage stats'),
+              onTap: () {
+                Navigator.pop(context);
+                _showIgnoreAppBottomSheet(stat.packageName, appName);
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
-      actions: [
-        OutlinedButton(onPressed: onReject, child: const Text('Reject')),
-        FilledButton(onPressed: onAccept, child: const Text('Grant All')),
-      ],
     );
   }
 
-  Widget _buildPermissionItem(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String subtitle,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ),
+  void _showTimerBottomSheet(AppUsageStat stat) {
+    final theme = Theme.of(context);
+    final hasTimer = _appTimers.containsKey(stat.packageName);
+    int selectedMinutes = _appTimers[stat.packageName] ?? 30;
+
+    final appInfo = _appInfoCache[stat.packageName];
+    final appName =
+        appInfo?['appName'] as String? ?? stat.packageName.split('.').last;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
-        ],
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Set Timer for $appName',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Limit usage to ${selectedMinutes} minutes per day',
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    Slider(
+                      value: selectedMinutes.toDouble(),
+                      min: 5,
+                      max: 300,
+                      divisions: 59,
+                      label: '$selectedMinutes min',
+                      onChanged: (value) {
+                        setSheetState(() {
+                          selectedMinutes = value.toInt();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Used today: ${TimeTools.formatTime(stat.totalTime)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        if (hasTimer)
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () async {
+                                await UsageStatsHelper.removeAppTimer(
+                                  stat.packageName,
+                                );
+                                await _loadAppTimers();
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Timer removed'),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              },
+                              child: const Text('Remove'),
+                            ),
+                          ),
+                        if (hasTimer) const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () async {
+                              await UsageStatsHelper.setAppTimer(
+                                stat.packageName,
+                                selectedMinutes,
+                              );
+                              await _loadAppTimers();
+                              if (mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Timer set to $selectedMinutes minutes',
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Text('Set Timer'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showIgnoreAppBottomSheet(String packageName, String appName) {
+    final theme = Theme.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 32,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.block,
+                        color: theme.colorScheme.error,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Ignore App',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Hide "$appName" from usage stats and widgets?',
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () async {
+                            setState(() {
+                              _ignoredPackages.add(packageName);
+                            });
+                            await _syncIgnoredPackages();
+                            Navigator.pop(context);
+                            await _loadUsageStats();
+
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text(
+                                    'App added to ignored list',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                  action: SnackBarAction(
+                                    label: 'Undo',
+                                    onPressed: () async {
+                                      setState(() {
+                                        _ignoredPackages.remove(packageName);
+                                      });
+                                      await _syncIgnoredPackages();
+                                      await _loadUsageStats();
+                                    },
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text('Ignore'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }

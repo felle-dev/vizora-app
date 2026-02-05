@@ -17,6 +17,8 @@ class BlockOverlayService : Service() {
     private val TAG = "BlockOverlayService"
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
+    private var dismissHandler: Handler? = null
+    private var dismissRunnable: Runnable? = null
     
     override fun onBind(intent: Intent?): IBinder? = null
     
@@ -25,7 +27,18 @@ class BlockOverlayService : Service() {
         
         Log.d(TAG, "Showing block overlay for $packageName")
         
+        // Remove any existing overlay first
+        removeOverlay()
+        
         showOverlay(packageName)
+        
+        // Auto-dismiss after 5 seconds to prevent overlay from staying if user navigates elsewhere
+        dismissHandler = Handler(Looper.getMainLooper())
+        dismissRunnable = Runnable {
+            removeOverlay()
+            stopSelf()
+        }
+        dismissHandler?.postDelayed(dismissRunnable!!, 5000)
         
         return START_NOT_STICKY
     }
@@ -152,33 +165,6 @@ class BlockOverlayService : Service() {
             }
         }
         
-        // Icon circle
-        val iconCircle = android.widget.FrameLayout(context).apply {
-            val dp80 = (80 * resources.displayMetrics.density).toInt()
-            layoutParams = android.widget.LinearLayout.LayoutParams(dp80, dp80).apply {
-                gravity = android.view.Gravity.CENTER_HORIZONTAL
-                bottomMargin = (24 * resources.displayMetrics.density).toInt()
-            }
-            setBackgroundColor(errorContainerColor)
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                outlineProvider = object : android.view.ViewOutlineProvider() {
-                    override fun getOutline(view: android.view.View, outline: android.graphics.Outline) {
-                        outline.setOval(0, 0, view.width, view.height)
-                    }
-                }
-                clipToOutline = true
-            }
-        }
-        
-        val icon = android.widget.ImageView(context).apply {
-            val dp48 = (48 * resources.displayMetrics.density).toInt()
-            layoutParams = android.widget.FrameLayout.LayoutParams(dp48, dp48, android.view.Gravity.CENTER)
-            setImageResource(android.R.drawable.ic_lock_idle_lock)
-            setColorFilter(0xFFB3261E.toInt())
-        }
-        iconCircle.addView(icon)
-        
         // Title
         val title = android.widget.TextView(context).apply {
             text = "Time's Up!"
@@ -195,20 +181,36 @@ class BlockOverlayService : Service() {
             }
         }
         
-        // Message
-        val message = android.widget.TextView(context).apply {
-            text = "You've reached your $limitMinutes minute limit for $appName today."
-            textSize = 16f
-            setTextColor(onSurfaceVariantColor)
-            gravity = android.view.Gravity.CENTER
-            setLineSpacing((4 * resources.displayMetrics.density), 1f)
-            layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                bottomMargin = (32 * resources.displayMetrics.density).toInt()
-            }
-        }
+       // Message - Digital Detox Style with app name
+val message = android.widget.TextView(context).apply {
+    // Choose one of these messages:
+    
+    // Option 1: Gentle encouragement
+    text = "You've spent $limitMinutes minutes on $appName today.\n\nTime to step away and recharge! ☕ Go grab a coffee, stretch, or enjoy the world around you."
+    
+    // Option 2: More direct
+    // text = "That's $limitMinutes minutes on $appName today—time for a digital detox! 🌿\n\nStep outside, hydrate, move around. Your body and mind need a real-world break."
+    
+    // Option 3: Motivational
+    // text = "$limitMinutes minutes on $appName is enough for today! ✨\n\nYour future self will thank you for this pause. Time to reconnect with the physical world—stretch, breathe, live!"
+    
+    // Option 4: Friendly but firm
+    // text = "You've hit your $limitMinutes minute limit on $appName! 👋\n\nYour eyes, posture, and mental health deserve better. Go do something that energizes you."
+    
+    // Option 5: Wellness-focused
+    // text = "$limitMinutes minutes on $appName today—time to unplug! 🔋\n\nConstant scrolling isn't self-care. Take a real break—sip some coffee, call a friend, or just be present."
+    
+    textSize = 16f
+    setTextColor(onSurfaceVariantColor)
+    gravity = android.view.Gravity.CENTER
+    setLineSpacing((6 * resources.displayMetrics.density), 1f)
+    layoutParams = android.widget.LinearLayout.LayoutParams(
+        android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+    ).apply {
+        bottomMargin = (32 * resources.displayMetrics.density).toInt()
+    }
+}
         
         // OK Button
         val button = android.widget.Button(context).apply {
@@ -236,16 +238,14 @@ class BlockOverlayService : Service() {
             }
             
             setOnClickListener {
-                // Navigate home first (ensures blocked app goes to background)
-                goHome()
-                // Then remove overlay
+                // Just dismiss the overlay
+                // The app is already blocked by accessibility service
                 removeOverlay()
                 stopSelf()
             }
         }
         
         // Assemble
-        cardContainer.addView(iconCircle)
         cardContainer.addView(title)
         cardContainer.addView(message)
         cardContainer.addView(button)
@@ -254,21 +254,11 @@ class BlockOverlayService : Service() {
         return rootFrame
     }
     
-    private fun goHome() {
-        try {
-            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_HOME)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            startActivity(homeIntent)
-            Log.d(TAG, "Navigated to home screen")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error navigating home: ${e.message}")
-        }
-    }
-    
     private fun removeOverlay() {
         try {
+            // Cancel auto-dismiss
+            dismissRunnable?.let { dismissHandler?.removeCallbacks(it) }
+            
             if (overlayView != null) {
                 windowManager?.removeView(overlayView)
                 overlayView = null
@@ -282,5 +272,7 @@ class BlockOverlayService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         removeOverlay()
+        dismissHandler = null
+        dismissRunnable = null
     }
 }

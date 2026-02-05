@@ -10,13 +10,13 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     
     private val TAG = "AppBlockerService"
     
-    // Track last block time for each app to prevent spam
-    private val lastBlockTimes = mutableMapOf<String, Long>()
-    private val BLOCK_COOLDOWN_MS = 5000L // 5 seconds cooldown between blocks
+    // Track last block time for each app to prevent overlay spam
+    private val lastOverlayShownTimes = mutableMapOf<String, Long>()
+    private val OVERLAY_SHOW_COOLDOWN_MS = 1000L // 1 second cooldown between showing overlays
     
     // Track if we recently performed home action
     private var lastHomeActionTime = 0L
-    private val HOME_ACTION_COOLDOWN_MS = 2000L // 2 seconds
+    private val HOME_ACTION_COOLDOWN_MS = 500L // 0.5 seconds
     
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
@@ -27,21 +27,12 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 if (packageName != null && packageName != "com.example.vizora") {
                     Log.d(TAG, "App opened: $packageName")
                     
-                    // Check cooldown period
-                    val now = System.currentTimeMillis()
-                    val lastBlockTime = lastBlockTimes[packageName] ?: 0L
-                    
-                    // Skip if we recently blocked this app
-                    if (now - lastBlockTime < BLOCK_COOLDOWN_MS) {
-                        Log.d(TAG, "Skipping $packageName - still in cooldown period")
-                        return
-                    }
-                    
                     // Check if app has timer and if limit exceeded
                     if (isAppLimitExceeded(packageName)) {
-                        Log.d(TAG, "Limit exceeded for $packageName, showing block overlay")
-                        lastBlockTimes[packageName] = now
-                        showBlockOverlay(packageName)
+                        Log.d(TAG, "Limit exceeded for $packageName, blocking")
+                        
+                        // Always block immediately
+                        blockApp(packageName)
                     }
                 }
             }
@@ -103,18 +94,27 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         }
     }
     
-    private fun showBlockOverlay(packageName: String) {
-        val intent = Intent(this, BlockOverlayService::class.java)
-        intent.putExtra("packageName", packageName)
-        startService(intent)
-        
-        // Go back to home with cooldown check
+    private fun blockApp(packageName: String) {
+        // Go back to home immediately
         val now = System.currentTimeMillis()
         if (now - lastHomeActionTime > HOME_ACTION_COOLDOWN_MS) {
             performGlobalAction(GLOBAL_ACTION_HOME)
             lastHomeActionTime = now
-            Log.d(TAG, "Performed home action")
+            Log.d(TAG, "Performed home action for blocked app")
         }
+        
+        // Show overlay with cooldown to prevent spam
+        val lastOverlayTime = lastOverlayShownTimes[packageName] ?: 0L
+        if (now - lastOverlayTime > OVERLAY_SHOW_COOLDOWN_MS) {
+            showBlockOverlay(packageName)
+            lastOverlayShownTimes[packageName] = now
+        }
+    }
+    
+    private fun showBlockOverlay(packageName: String) {
+        val intent = Intent(this, BlockOverlayService::class.java)
+        intent.putExtra("packageName", packageName)
+        startService(intent)
     }
     
     override fun onInterrupt() {
@@ -130,6 +130,6 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         super.onDestroy()
         Log.d(TAG, "Service destroyed")
         // Clear tracking maps
-        lastBlockTimes.clear()
+        lastOverlayShownTimes.clear()
     }
 }
