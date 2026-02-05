@@ -311,7 +311,7 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  applicationLegalese: '© 2024 Vizora\nGPL v3.0 License',
+                  applicationLegalese: '© 2026 Vizora\nGPL v3.0 License',
                 );
               },
             ),
@@ -421,7 +421,7 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
             ),
             const SizedBox(height: 16),
             const Text(
-              '© 2024 Vizora\nLicensed under GPL v3.0',
+              '© 2026 Vizora\nLicensed under GPL v3.0',
               style: TextStyle(fontSize: 12),
             ),
           ],
