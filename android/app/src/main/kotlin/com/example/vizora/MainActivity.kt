@@ -239,7 +239,9 @@ class MainActivity: FlutterActivity() {
                     val packageName = stat.packageName
                     
                     // Skip ignored packages and launcher
-                    if (packageName in ignoredPackages || packageName == launcherPackage) {
+                    if (packageName in ignoredPackages || 
+                        packageName == launcherPackage ||
+                        packageName == "com.example.vizora") {
                         continue
                     }
                     
