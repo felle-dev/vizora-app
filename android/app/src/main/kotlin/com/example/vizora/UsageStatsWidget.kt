@@ -156,9 +156,8 @@ class UsageStatsWidget : AppWidgetProvider() {
                 // For small widget, entire container is clickable
                 views.setOnClickPendingIntent(R.id.widget_container, openAppPendingIntent)
             } else {
-                // For large widget, title and total time are clickable
-                views.setOnClickPendingIntent(R.id.widget_title, openAppPendingIntent)
-                views.setOnClickPendingIntent(R.id.total_time, openAppPendingIntent)
+                // For large widget, entire container is clickable except refresh button
+                views.setOnClickPendingIntent(R.id.widget_container, openAppPendingIntent)
             }
             
             appWidgetManager.updateAppWidget(appWidgetId, views)

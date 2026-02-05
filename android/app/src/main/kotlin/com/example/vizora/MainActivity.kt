@@ -93,10 +93,31 @@ class MainActivity: FlutterActivity() {
                         result.error("INVALID_ARGUMENT", "packages cannot be null", null)
                     }
                 }
-                "exportData" -> {
-                    val startDate = call.argument<Long>("startDate") ?: 0L
-                    val endDate = call.argument<Long>("endDate") ?: System.currentTimeMillis()
-                    result.success(exportUsageData(startDate, endDate))
+                "setAppTimer" -> {
+                    val packageName = call.argument<String>("packageName")
+                    val limitMinutes = call.argument<Int>("limitMinutes")
+                    if (packageName != null && limitMinutes != null) {
+                        setAppTimer(packageName, limitMinutes)
+                        result.success(null)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "Invalid arguments", null)
+                    }
+                }
+                "getAppTimers" -> {
+                    result.success(getAppTimers())
+                }
+                "removeAppTimer" -> {
+                    val packageName = call.argument<String>("packageName")
+                    if (packageName != null) {
+                        removeAppTimer(packageName)
+                        result.success(null)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "packageName cannot be null", null)
+                    }
+                }
+                "getAppUsageToday" -> {
+                    val packageName = call.argument<String>("packageName")
+                    result.success(if (packageName != null) getAppUsageToday(packageName) else null)
                 }
                 else -> result.notImplemented()
             }
@@ -383,68 +404,56 @@ class MainActivity: FlutterActivity() {
     }
 
     // ========================================================================
-    // Export Data
+    // App Timer Methods
     // ========================================================================
 
-    private fun exportUsageData(startDate: Long, endDate: Long): String? {
-        try {
-            val usageStats = getUsageStats(startDate, endDate)
-            
-            if (usageStats.isEmpty()) {
-                Log.w(TAG, "No usage data to export")
-                return null
-            }
-
-            // Create CSV content
-            val csv = StringBuilder()
-            csv.append("Package Name,App Name,Total Time (ms),Total Time (formatted),Sessions,Start Times\n")
-
-            for (stat in usageStats) {
-                val packageName = stat["packageName"] as String
-                val totalTime = stat["totalTime"] as Long
-                val startTimes = stat["startTimes"] as List<*>
-                
-                val appInfo = getAppInfo(packageName)
-                val appName = appInfo?.get("appName") as? String ?: packageName.split('.').last()
-                val formattedTime = formatTime(totalTime)
-                val sessions = startTimes.size
-                
-                val startTimesStr = startTimes.joinToString(";") { time ->
-                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                        .format(Date(time as Long))
-                }
-                
-                csv.append("\"$packageName\",\"$appName\",$totalTime,\"$formattedTime\",$sessions,\"$startTimesStr\"\n")
-            }
-
-            // Save to Downloads folder
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val fileName = "usage_stats_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.csv"
-            val file = File(downloadsDir, fileName)
-
-            FileWriter(file).use { writer ->
-                writer.write(csv.toString())
-            }
-
-            Log.d(TAG, "Data exported to: ${file.absolutePath}")
-            return file.absolutePath
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error exporting data: ${e.message}", e)
-            return null
-        }
+    private fun setAppTimer(packageName: String, limitMinutes: Int) {
+        val prefs = getSharedPreferences("app_timers", Context.MODE_PRIVATE)
+        prefs.edit().putInt(packageName, limitMinutes).apply()
+        Log.d(TAG, "Timer set for $packageName: $limitMinutes minutes")
     }
 
-    private fun formatTime(milliseconds: Long): String {
-        if (milliseconds <= 0) return "0m"
-        
-        val hours = milliseconds / (1000 * 60 * 60)
-        val minutes = (milliseconds % (1000 * 60 * 60)) / (1000 * 60)
-        
-        return when {
-            hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
-            hours > 0 -> "${hours}h"
-            else -> "${minutes}m"
+    private fun getAppTimers(): Map<String, Int> {
+        val prefs = getSharedPreferences("app_timers", Context.MODE_PRIVATE)
+        return prefs.all.mapNotNull { (key, value) ->
+            if (value is Int) key to value else null
+        }.toMap()
+    }
+
+    private fun removeAppTimer(packageName: String) {
+        val prefs = getSharedPreferences("app_timers", Context.MODE_PRIVATE)
+        prefs.edit().remove(packageName).apply()
+        Log.d(TAG, "Timer removed for $packageName")
+    }
+
+    private fun getAppUsageToday(packageName: String): Int? {
+        try {
+            val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            
+            val calendar = Calendar.getInstance()
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            val start = calendar.timeInMillis
+            val end = System.currentTimeMillis()
+            
+            val stats = usageStatsManager.queryUsageStats(
+                UsageStatsManager.INTERVAL_DAILY,
+                start,
+                end
+            )
+            
+            var totalTime = 0L
+            for (stat in stats) {
+                if (stat.packageName == packageName) {
+                    totalTime += stat.totalTimeInForeground
+                }
+            }
+            
+            return totalTime.toInt()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting app usage today: ${e.message}")
+            return null
         }
     }
 }

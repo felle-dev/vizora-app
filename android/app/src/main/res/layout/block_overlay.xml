@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="#CC000000"
+  android:clickable="true"
+  android:focusable="true"
+>
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:layout_marginHorizontal="32dp"
+    android:background="@android:color/white"
+    android:orientation="vertical"
+    android:padding="32dp"
+    android:elevation="8dp"
+  >
+    <!-- Icon -->
+    <ImageView
+      android:layout_width="64dp"
+      android:layout_height="64dp"
+      android:layout_gravity="center_horizontal"
+      android:src="@android:drawable/ic_lock_idle_lock"
+      android:tint="#E53935"
+      android:layout_marginBottom="16dp"
+    />
+
+    <!-- Title -->
+    <TextView
+      android:id="@+id/block_title"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_gravity="center_horizontal"
+      android:text="Time's Up!"
+      android:textSize="24sp"
+      android:textStyle="bold"
+      android:textColor="#000000"
+      android:layout_marginBottom="8dp"
+    />
+
+    <!-- Message -->
+    <TextView
+      android:id="@+id/block_message"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_gravity="center_horizontal"
+      android:text="You've reached your daily limit for this app."
+      android:textSize="16sp"
+      android:textColor="#666666"
+      android:gravity="center"
+      android:layout_marginBottom="24dp"
+    />
+
+    <!-- OK Button -->
+    <Button
+      android:id="@+id/btn_ok"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="OK"
+      android:textSize="16sp"
+      android:backgroundTint="#2196F3"
+    />
+  </LinearLayout>
+</FrameLayout>

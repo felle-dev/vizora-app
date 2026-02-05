@@ -14,23 +14,17 @@
     android:name="android.permission.QUERY_ALL_PACKAGES"
     tools:ignore="QueryAllPackagesPermission"
   />
-  <!-- Storage permissions for export -->
-  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-    android:maxSdkVersion="28" />
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-    android:maxSdkVersion="32" />
-  
+
   <queries>
     <intent>
       <action android:name="android.intent.action.MAIN" />
     </intent>
   </queries>
-  
+
   <application
     android:label="Vizora"
     android:name="${applicationName}"
     android:icon="@mipmap/launcher_icon"
-    android:requestLegacyExternalStorage="true"
   >
     <activity
       android:name=".MainActivity"
@@ -51,7 +45,7 @@
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
     </activity>
-    
+
     <!-- Permission 3: Accessibility Service (for app blocking) -->
     <service
       android:name=".AppBlockerAccessibilityService"
@@ -66,7 +60,10 @@
         android:resource="@xml/accessibility_service_config"
       />
     </service>
-    
+
+    <!-- Block Overlay Service -->
+    <service android:name=".BlockOverlayService" android:exported="false" />
+
     <!-- Permission 4: Device Admin Receiver (for anti-uninstall) -->
     <receiver
       android:name=".AdminReceiver"
@@ -78,9 +75,9 @@
         <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
       </intent-filter>
     </receiver>
-    
+
     <meta-data android:name="flutterEmbedding" android:value="2" />
-    
+
     <!-- Widget -->
     <receiver android:name=".UsageStatsWidget" android:exported="true">
       <intent-filter>
@@ -94,7 +91,7 @@
       />
     </receiver>
   </application>
-  
+
   <queries>
     <intent>
       <action android:name="android.intent.action.PROCESS_TEXT" />
