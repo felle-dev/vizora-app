@@ -210,54 +210,58 @@ class MainActivity: FlutterActivity() {
     // ========================================================================
 
     private fun getUsageStats(start: Long, end: Long): List<Map<String, Any>> {
-        try {
-            val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-            
-            // Get ignored packages from SharedPreferences
-            val prefs = getSharedPreferences("usage_stats_prefs", Context.MODE_PRIVATE)
-            val ignoredPackages = prefs.getStringSet("ignored_packages", setOf()) ?: setOf()
-            
-            // Auto-ignore the default launcher app
-            val launcherPackage = getDefaultLauncherPackage()
-            
-            // Step 1: Get daily aggregated stats
-            val stats = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                start,
-                end
-            )
+    try {
+        val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        
+        // Get ignored packages from SharedPreferences
+        val prefs = getSharedPreferences("usage_stats_prefs", Context.MODE_PRIVATE)
+        val ignoredPackages = prefs.getStringSet("ignored_packages", setOf()) ?: setOf()
+        
+        // Auto-ignore the default launcher app
+        val launcherPackage = getDefaultLauncherPackage()
+        
+        val MIN_USAGE_TIME = 180000L // 3 minutes - MUST match widget
+        
+        val stats = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY,
+            start,
+            end
+        )
 
-            if (stats == null || stats.isEmpty()) {
-                return emptyList()
-            }
+        if (stats == null || stats.isEmpty()) {
+            return emptyList()
+        }
 
-            // Step 2: Aggregate by package (excluding ignored & launcher)
-            val aggregatedStats = mutableMapOf<String, MutableMap<String, Any>>()
+        val aggregatedStats = mutableMapOf<String, MutableMap<String, Any>>()
 
-            for (stat in stats) {
-                if (stat.totalTimeInForeground > 0) {
-                    val packageName = stat.packageName
-                    
-                    // Skip ignored packages and launcher
-                    if (packageName in ignoredPackages || 
-                        packageName == launcherPackage ||
-                        packageName == "com.example.vizora") {
-                        continue
-                    }
-                    
-                    if (aggregatedStats.containsKey(packageName)) {
-                        val existing = aggregatedStats[packageName]!!
-                        val totalTime = existing["totalTime"] as Long
-                        existing["totalTime"] = totalTime + stat.totalTimeInForeground
-                    } else {
-                        aggregatedStats[packageName] = mutableMapOf(
-                            "packageName" to packageName,
-                            "totalTime" to stat.totalTimeInForeground,
-                            "startTimes" to mutableListOf<Long>()
-                        )
-                    }
+        for (stat in stats) {
+            if (stat.totalTimeInForeground > 0) {
+                val packageName = stat.packageName
+                
+                // Skip ignored packages and launcher
+                if (packageName in ignoredPackages || 
+                    packageName == launcherPackage ||
+                    packageName == "com.example.vizora") {
+                    continue
+                }
+                
+                if (stat.totalTimeInForeground < MIN_USAGE_TIME) {
+                    continue
+                }
+                
+                if (aggregatedStats.containsKey(packageName)) {
+                    val existing = aggregatedStats[packageName]!!
+                    val totalTime = existing["totalTime"] as Long
+                    existing["totalTime"] = totalTime + stat.totalTimeInForeground
+                } else {
+                    aggregatedStats[packageName] = mutableMapOf(
+                        "packageName" to packageName,
+                        "totalTime" to stat.totalTimeInForeground,
+                        "startTimes" to mutableListOf<Long>()
+                    )
                 }
             }
+        }
 
             // Step 3: Query events for accurate session tracking
             try {
