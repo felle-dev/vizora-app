@@ -30,6 +30,7 @@ class AppUsageBreakdownScreen extends StatefulWidget {
 class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
   Map<String, dynamic>? _appInfo;
   int? _usageToday;
+  bool _isLoadingAppInfo = true;
 
   @override
   void initState() {
@@ -41,7 +42,10 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
   Future<void> _loadAppInfo() async {
     final info = await AppInfoCache.getAppInfo(widget.stat.packageName);
     if (mounted) {
-      setState(() => _appInfo = info);
+      setState(() {
+        _appInfo = info;
+        _isLoadingAppInfo = false;
+      });
     }
   }
 
@@ -243,28 +247,39 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
 
   Widget _buildAppIcon() {
     final theme = Theme.of(context);
-    if (_appInfo != null) {
-      final iconBytes = _appInfo!['icon'] as List<int>?;
-      if (iconBytes != null && iconBytes.isNotEmpty) {
-        return Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(64), // Fully rounded
-            // border: Border.all(
-            //   color: theme.colorScheme.outlineVariant,
-            //   width: 1,
-            // ),
+
+    // Show consistent placeholder while loading
+    if (_isLoadingAppInfo || _appInfo == null) {
+      return Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(64),
+        ),
+        child: Icon(
+          Icons.apps,
+          size: 32,
+          color: theme.colorScheme.onPrimaryContainer,
+        ),
+      );
+    }
+
+    final iconBytes = _appInfo!['icon'] as List<int>?;
+    if (iconBytes != null && iconBytes.isNotEmpty) {
+      return Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(64)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(64),
+          child: Image.memory(
+            Uint8List.fromList(iconBytes),
+            fit: BoxFit.cover,
+            gaplessPlayback: true, // Add this
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(64), // Fully rounded
-            child: Image.memory(
-              Uint8List.fromList(iconBytes),
-              fit: BoxFit.cover,
-            ),
-          ),
-        );
-      }
+        ),
+      );
     }
 
     return Container(
@@ -272,7 +287,7 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
       height: 64,
       decoration: BoxDecoration(
         color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(64), // Fully rounded
+        borderRadius: BorderRadius.circular(64),
       ),
       child: Icon(
         Icons.apps,

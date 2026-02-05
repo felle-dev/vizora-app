@@ -29,6 +29,8 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
   bool _isLoading = false;
   bool _hasPermission = false;
 
+  final Map<String, Map<String, dynamic>?> _appInfoCache = {};
+
   // Permission status tracking
   bool _hasUsageStats = false;
   bool _hasAccessibility = false;
@@ -60,6 +62,194 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
       // App came back to foreground, recheck permissions and continue flow
       _continuePermissionFlow();
     }
+  }
+
+  Future<void> _loadUsageStats() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final stats = await UsageStatsHelper.getStatsByDate(_selectedDate);
+      final filteredStats = stats
+          .where(
+            (stat) =>
+                stat.totalTime >= _minUsageTime &&
+                !_ignoredPackages.contains(stat.packageName),
+          )
+          .toList();
+      filteredStats.sort((a, b) => b.totalTime.compareTo(a.totalTime));
+
+      // Preload app info for all stats
+      for (final stat in filteredStats) {
+        if (!_appInfoCache.containsKey(stat.packageName)) {
+          _appInfoCache[stat.packageName] = await AppInfoCache.getAppInfo(
+            stat.packageName,
+          );
+        }
+      }
+
+      setState(() {
+        _stats = filteredStats;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Widget _buildAppUsageItem(AppUsageStat stat) {
+    final theme = Theme.of(context);
+    final hasTimer = _appTimers.containsKey(stat.packageName);
+    final timerLimit = _appTimers[stat.packageName];
+
+    // Get cached app info
+    final appInfo = _appInfoCache[stat.packageName];
+    final iconBytes = appInfo?['icon'] as List<int>?;
+    final appName = appInfo?['appName'] as String?;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AppUsageBreakdownScreen(
+                  stat: stat,
+                  hasTimer: hasTimer,
+                  timerLimit: timerLimit,
+                  onTimerSet: (limit) async {
+                    if (limit != null) {
+                      await UsageStatsHelper.setAppTimer(
+                        stat.packageName,
+                        limit,
+                      );
+                    } else {
+                      await UsageStatsHelper.removeAppTimer(stat.packageName);
+                    }
+                    await _loadAppTimers();
+                  },
+                ),
+              ),
+            );
+          },
+          onLongPress: () => _showIgnoreAppDialog(stat.packageName),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Stack(
+                  children: [
+                    // Remove FutureBuilder, use cached data directly
+                    iconBytes != null && iconBytes.isNotEmpty
+                        ? Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(48),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(48),
+                              child: Image.memory(
+                                Uint8List.fromList(iconBytes),
+                                fit: BoxFit.cover,
+                                gaplessPlayback: true, // Add this
+                              ),
+                            ),
+                          )
+                        : Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(48),
+                            ),
+                            child: Icon(
+                              Icons.apps,
+                              color: theme.colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                    if (hasTimer)
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: theme.colorScheme.surface,
+                              width: 2,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.timer,
+                            color: theme.colorScheme.onPrimary,
+                            size: 12,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        appName ?? stat.packageName.split('.').last,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            TimeTools.formatTime(stat.totalTime),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.refresh,
+                            size: 14,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${stat.sessionCount} sessions',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _continuePermissionFlow() async {
@@ -158,28 +348,6 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
     }
   }
 
-  Future<void> _loadUsageStats() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final stats = await UsageStatsHelper.getStatsByDate(_selectedDate);
-      final filteredStats = stats
-          .where(
-            (stat) =>
-                stat.totalTime >= _minUsageTime &&
-                !_ignoredPackages.contains(stat.packageName),
-          )
-          .toList();
-      filteredStats.sort((a, b) => b.totalTime.compareTo(a.totalTime));
-
-      setState(() {
-        _stats = filteredStats;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
-  }
 
   Future<void> _syncIgnoredPackages() async {
     await UsageStatsHelper.setIgnoredPackages(_ignoredPackages.toList());
@@ -1018,175 +1186,6 @@ class _UsageStatsHomeState extends State<UsageStatsHome>
           ),
         ],
       ],
-    );
-  }
-
-  Widget _buildAppUsageItem(AppUsageStat stat) {
-    final theme = Theme.of(context);
-    final hasTimer = _appTimers.containsKey(stat.packageName);
-    final timerLimit = _appTimers[stat.packageName];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AppUsageBreakdownScreen(
-                  stat: stat,
-                  hasTimer: hasTimer,
-                  timerLimit: timerLimit,
-                  onTimerSet: (limit) async {
-                    if (limit != null) {
-                      await UsageStatsHelper.setAppTimer(
-                        stat.packageName,
-                        limit,
-                      );
-                    } else {
-                      await UsageStatsHelper.removeAppTimer(stat.packageName);
-                    }
-                    await _loadAppTimers();
-                  },
-                ),
-              ),
-            );
-          },
-          onLongPress: () => _showIgnoreAppDialog(stat.packageName),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Stack(
-                  children: [
-                    FutureBuilder<Map<String, dynamic>?>(
-                      future: AppInfoCache.getAppInfo(stat.packageName),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData && snapshot.data != null) {
-                          final iconBytes =
-                              snapshot.data!['icon'] as List<int>?;
-                          if (iconBytes != null && iconBytes.isNotEmpty) {
-                            return Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(48),
-                                // border: Border.all(
-                                //   color: theme.colorScheme.outlineVariant,
-                                //   width: 1,
-                                // ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(48),
-                                child: Image.memory(
-                                  Uint8List.fromList(iconBytes),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                        return Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(48),
-                          ),
-                          child: Icon(
-                            Icons.apps,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                        );
-                      },
-                    ),
-                    if (hasTimer)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: theme.colorScheme.surface,
-                              width: 2,
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.timer,
-                            color: theme.colorScheme.onPrimary,
-                            size: 12,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FutureBuilder<Map<String, dynamic>?>(
-                        future: AppInfoCache.getAppInfo(stat.packageName),
-                        builder: (context, snapshot) {
-                          final appName = snapshot.data?['appName'] as String?;
-                          return Text(
-                            appName ?? stat.packageName.split('.').last,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            size: 14,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            TimeTools.formatTime(stat.totalTime),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Icon(
-                            Icons.refresh,
-                            size: 14,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${stat.sessionCount} sessions',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.chevron_right,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 
