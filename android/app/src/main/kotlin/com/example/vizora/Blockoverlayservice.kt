@@ -17,7 +17,6 @@ class BlockOverlayService : Service() {
     private val TAG = "BlockOverlayService"
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
-    private val handler = Handler(Looper.getMainLooper())
     
     override fun onBind(intent: Intent?): IBinder? = null
     
@@ -27,12 +26,6 @@ class BlockOverlayService : Service() {
         Log.d(TAG, "Showing block overlay for $packageName")
         
         showOverlay(packageName)
-        
-        // Auto-dismiss after 3 seconds
-        handler.postDelayed({
-            removeOverlay()
-            stopSelf()
-        }, 3000)
         
         return START_NOT_STICKY
     }
@@ -243,6 +236,9 @@ class BlockOverlayService : Service() {
             }
             
             setOnClickListener {
+                // Navigate home first (ensures blocked app goes to background)
+                goHome()
+                // Then remove overlay
                 removeOverlay()
                 stopSelf()
             }
@@ -256,6 +252,19 @@ class BlockOverlayService : Service() {
         rootFrame.addView(cardContainer)
         
         return rootFrame
+    }
+    
+    private fun goHome() {
+        try {
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(homeIntent)
+            Log.d(TAG, "Navigated to home screen")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error navigating home: ${e.message}")
+        }
     }
     
     private fun removeOverlay() {

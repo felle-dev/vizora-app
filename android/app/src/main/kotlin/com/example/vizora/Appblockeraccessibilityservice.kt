@@ -10,6 +10,14 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     
     private val TAG = "AppBlockerService"
     
+    // Track last block time for each app to prevent spam
+    private val lastBlockTimes = mutableMapOf<String, Long>()
+    private val BLOCK_COOLDOWN_MS = 5000L // 5 seconds cooldown between blocks
+    
+    // Track if we recently performed home action
+    private var lastHomeActionTime = 0L
+    private val HOME_ACTION_COOLDOWN_MS = 2000L // 2 seconds
+    
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         
@@ -19,9 +27,20 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 if (packageName != null && packageName != "com.example.vizora") {
                     Log.d(TAG, "App opened: $packageName")
                     
+                    // Check cooldown period
+                    val now = System.currentTimeMillis()
+                    val lastBlockTime = lastBlockTimes[packageName] ?: 0L
+                    
+                    // Skip if we recently blocked this app
+                    if (now - lastBlockTime < BLOCK_COOLDOWN_MS) {
+                        Log.d(TAG, "Skipping $packageName - still in cooldown period")
+                        return
+                    }
+                    
                     // Check if app has timer and if limit exceeded
                     if (isAppLimitExceeded(packageName)) {
                         Log.d(TAG, "Limit exceeded for $packageName, showing block overlay")
+                        lastBlockTimes[packageName] = now
                         showBlockOverlay(packageName)
                     }
                 }
@@ -89,8 +108,13 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         intent.putExtra("packageName", packageName)
         startService(intent)
         
-        // Go back to home
-        performGlobalAction(GLOBAL_ACTION_HOME)
+        // Go back to home with cooldown check
+        val now = System.currentTimeMillis()
+        if (now - lastHomeActionTime > HOME_ACTION_COOLDOWN_MS) {
+            performGlobalAction(GLOBAL_ACTION_HOME)
+            lastHomeActionTime = now
+            Log.d(TAG, "Performed home action")
+        }
     }
     
     override fun onInterrupt() {
@@ -105,5 +129,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "Service destroyed")
+        // Clear tracking maps
+        lastBlockTimes.clear()
     }
 }
