@@ -484,23 +484,18 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
                       ),
                     ),
                   ],
-                  // lineTouchData: LineTouchData(
-                  //   touchTooltipData: LineTouchTooltipData(
-                  //     getTooltipItems: (touchedSpots) {
-                  //       return touchedSpots.map((spot) {
-                  //         final hour = spot.x.toInt();
-                  //         final minutes = spot.y.toInt();
-                  //         return LineTooltipItem(
-                  //           '${TimeTools.formatHour(hour)}\n${minutes}m',
-                  //           TextStyle(
-                  //             color: theme.colorScheme.onInverseSurface,
-                  //             fontWeight: FontWeight.bold,
-                  //           ),
-                  //         );
-                  //       }).toList();
-                  //     },
-                  //   ),
-                  // ),
+                  lineTouchData: LineTouchData(
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          return LineTooltipItem(
+                            '',
+                            TextStyle(color: theme.colorScheme.onSurface),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
                   extraLinesData: ExtraLinesData(
                     horizontalLines: [
                       HorizontalLine(
