@@ -489,8 +489,8 @@ class _AppUsageBreakdownScreenState extends State<AppUsageBreakdownScreen> {
                       getTooltipItems: (touchedSpots) {
                         return touchedSpots.map((spot) {
                           return LineTooltipItem(
-                            '',
-                            TextStyle(color: theme.colorScheme.onSurface),
+                            spot.y.toStringAsFixed(1),
+                            TextStyle(color: Colors.white),
                           );
                         }).toList();
                       },
